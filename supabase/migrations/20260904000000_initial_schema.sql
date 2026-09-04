@@ -210,10 +210,10 @@ create policy "tax owner all" on public.tax_records for all using (auth.uid() = 
 create policy "inspection owner all" on public.inspection_records for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
-values ('vehicle-documents', 'vehicle-documents', false, 10485760, array['application/pdf', 'image/jpeg', 'image/png', 'image/webp'])
+values ('vehicle-documents', 'vehicle-documents', false, 52428800, array['application/pdf', 'image/jpeg', 'image/png', 'image/webp'])
 on conflict (id) do update set
   public = false,
-  file_size_limit = 10485760,
+  file_size_limit = 52428800,
   allowed_mime_types = array['application/pdf', 'image/jpeg', 'image/png', 'image/webp'];
 
 create policy "storage owner read" on storage.objects
