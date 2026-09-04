@@ -130,6 +130,22 @@ create table public.inspection_records (
   created_at timestamptz not null default now()
 );
 
+create table public.reminders (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  vehicle_id uuid not null references public.vehicles(id) on delete cascade,
+  title text not null,
+  category text not null default 'evento',
+  due_date date,
+  due_mileage integer check (due_mileage >= 0),
+  notes text,
+  completed_at date,
+  completed_maintenance_record_id uuid references public.maintenance_records(id) on delete set null,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  constraint reminders_due_check check (due_date is not null or due_mileage is not null)
+);
+
 create index vehicles_user_id_idx on public.vehicles(user_id);
 create index odometer_vehicle_idx on public.odometer_readings(vehicle_id, reading_date desc);
 create index maintenance_vehicle_due_idx on public.maintenance_records(vehicle_id, next_due_date);
@@ -137,6 +153,7 @@ create index documents_vehicle_expires_idx on public.documents(vehicle_id, expir
 create index insurance_vehicle_expires_idx on public.insurance_records(vehicle_id, expires_at);
 create index tax_vehicle_expires_idx on public.tax_records(vehicle_id, expires_at);
 create index inspection_vehicle_expires_idx on public.inspection_records(vehicle_id, next_due_date);
+create index reminders_vehicle_due_idx on public.reminders(vehicle_id, due_date, due_mileage);
 
 create or replace function public.set_updated_at()
 returns trigger language plpgsql as $$
@@ -150,6 +167,7 @@ create trigger set_profiles_updated_at before update on public.profiles for each
 create trigger set_vehicles_updated_at before update on public.vehicles for each row execute function public.set_updated_at();
 create trigger set_maintenance_updated_at before update on public.maintenance_records for each row execute function public.set_updated_at();
 create trigger set_documents_updated_at before update on public.documents for each row execute function public.set_updated_at();
+create trigger set_reminders_updated_at before update on public.reminders for each row execute function public.set_updated_at();
 
 create or replace function public.handle_new_user()
 returns trigger language plpgsql security definer set search_path = public as $$
@@ -195,6 +213,7 @@ alter table public.documents enable row level security;
 alter table public.insurance_records enable row level security;
 alter table public.tax_records enable row level security;
 alter table public.inspection_records enable row level security;
+alter table public.reminders enable row level security;
 
 create policy "profiles owner read" on public.profiles for select using (auth.uid() = id);
 create policy "profiles owner update" on public.profiles for update using (auth.uid() = id) with check (auth.uid() = id);
@@ -208,6 +227,7 @@ create policy "documents owner all" on public.documents for all using (auth.uid(
 create policy "insurance owner all" on public.insurance_records for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 create policy "tax owner all" on public.tax_records for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 create policy "inspection owner all" on public.inspection_records for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+create policy "reminders owner all" on public.reminders for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
 values ('vehicle-documents', 'vehicle-documents', false, 52428800, array['application/pdf', 'image/jpeg', 'image/png', 'image/webp'])

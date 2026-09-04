@@ -23,11 +23,11 @@ const schema = z.object({
   isRecurring: z.boolean()
 });
 
-export const MaintenanceForm = ({ vehicleId, onSubmit, onCancel }: { vehicleId: string; onSubmit: (draft: MaintenanceDraft) => Promise<void>; onCancel: () => void }) => {
+export const MaintenanceForm = ({ vehicleId, initialValues, onSubmit, onCancel }: { vehicleId: string; initialValues?: Partial<MaintenanceDraft>; onSubmit: (draft: MaintenanceDraft) => Promise<void>; onCancel: () => void }) => {
   const { data } = useApp();
   const { register, handleSubmit, watch, setValue, formState: { errors, isSubmitting } } = useForm<MaintenanceDraft>({
     resolver: zodResolver(schema),
-    defaultValues: { vehicleId, typeName: 'Tagliando', title: '', performedAt: todayISO(), isRecurring: true }
+    defaultValues: { vehicleId, typeName: 'Tagliando', title: '', performedAt: todayISO(), isRecurring: true, ...initialValues }
   });
   const selectedType = watch('maintenanceTypeId');
 

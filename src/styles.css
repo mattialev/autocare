@@ -103,6 +103,8 @@ dd { margin: 0; font-weight: 700; }
 .card-span-2 { grid-column: span 2; }
 .deadline-list, .details { display: grid; gap: .7rem; }
 .deadline-row { display: flex; justify-content: space-between; align-items: center; gap: 1rem; padding: .75rem 0; border-bottom: 1px solid var(--border); }
+.clickable-deadline { width: 100%; background: transparent; border-left: 0; border-right: 0; border-top: 0; color: inherit; text-align: left; cursor: pointer; }
+.clickable-deadline:hover, .clickable-row:hover { background: #f8fbff; }
 .deadline-row:last-child { border-bottom: 0; }
 .deadline-row span, td span { display: block; color: var(--muted); font-size: .86rem; margin-top: .2rem; }
 .check-row, .timeline-item { display: flex; align-items: center; gap: .5rem; color: #344054; }
@@ -120,6 +122,7 @@ table { width: 100%; border-collapse: collapse; min-width: 680px; }
 th { text-align: left; color: var(--muted); font-size: .78rem; font-weight: 800; padding: .75rem; border-bottom: 1px solid var(--border); }
 td { padding: .85rem .75rem; border-bottom: 1px solid var(--border); vertical-align: middle; }
 tr:last-child td { border-bottom: 0; }
+.clickable-row { cursor: pointer; }
 .table-actions, .file-actions { display: flex; gap: .4rem; flex-wrap: wrap; }
 
 .folder-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); margin-bottom: 1rem; }
@@ -148,6 +151,12 @@ label span, .form-error { color: var(--red); font-size: .82rem; margin: .25rem 0
 .checkbox-row { display: flex; align-items: center; gap: .55rem; align-self: end; }
 .checkbox-row input { width: auto; margin: 0; }
 .empty-state { padding: 2rem; text-align: center; color: var(--muted); display: grid; gap: 1rem; place-items: center; }
+.clickable-card { text-align: left; color: inherit; cursor: pointer; }
+.clickable-card:hover { border-color: #b2ddff; transform: translateY(-1px); }
+.detail-panel { display: grid; gap: 1.2rem; }
+.detail-title { display: flex; justify-content: space-between; align-items: center; gap: 1rem; }
+.detail-title h3 { margin: .2rem 0 0; font-size: 1.35rem; }
+.choice-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .8rem; }
 
 @media (max-width: 960px) {
   .vehicle-grid, .dashboard-grid, .card-grid, .profile-grid, .folder-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }

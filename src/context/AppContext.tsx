@@ -2,7 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useState } from 'rea
 import type { AuthError, User } from '@supabase/supabase-js';
 import { DOCUMENTS_BUCKET, isSupabaseConfigured, supabase } from '../lib/supabase';
 import { demoData, demoProfile } from '../data/demoData';
-import type { AppData, DocumentDraft, MaintenanceDraft, Profile, Vehicle, VehicleDraft, VehicleDocument } from '../types';
+import type { AppData, DocumentDraft, MaintenanceDraft, Profile, ReminderDraft, Vehicle, VehicleDraft, VehicleDocument } from '../types';
 import { normalizeDocumentDraft, normalizeMaintenanceDraft, todayISO } from '../utils/deadlines';
 
 type AuthMode = 'demo' | 'supabase';
@@ -29,6 +29,10 @@ type AppContextValue = {
   deleteMaintenance: (id: string) => Promise<void>;
   addDocument: (draft: DocumentDraft, file?: File) => Promise<void>;
   deleteDocument: (id: string) => Promise<void>;
+  addReminder: (draft: ReminderDraft) => Promise<void>;
+  completeReminder: (id: string) => Promise<void>;
+  completeReminderWithMaintenance: (id: string, draft: MaintenanceDraft) => Promise<void>;
+  deleteReminder: (id: string) => Promise<void>;
 };
 
 const storageKey = 'autocare-demo-data';
@@ -38,7 +42,9 @@ const cloneDemo = (): AppData => JSON.parse(JSON.stringify(demoData)) as AppData
 
 const loadDemoData = () => {
   const stored = localStorage.getItem(storageKey);
-  return stored ? (JSON.parse(stored) as AppData) : cloneDemo();
+  if (!stored) return cloneDemo();
+  const parsed = JSON.parse(stored) as Partial<AppData>;
+  return { ...cloneDemo(), ...parsed, reminders: parsed.reminders || [] };
 };
 
 const saveDemoData = (data: AppData) => localStorage.setItem(storageKey, JSON.stringify(data));
@@ -120,11 +126,11 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
       setUser(authUser);
       if (!authUser) {
         setProfile(null);
-        setData({ ...cloneDemo(), vehicles: [], odometerReadings: [], maintenanceRecords: [], documents: [], insuranceRecords: [], taxRecords: [], inspectionRecords: [] });
+        setData({ ...cloneDemo(), vehicles: [], odometerReadings: [], maintenanceRecords: [], documents: [], insuranceRecords: [], taxRecords: [], inspectionRecords: [], reminders: [] });
         return;
       }
 
-      const [{ data: vehicles }, { data: odometer }, { data: maintenanceTypes }, { data: maintenance }, { data: documents }, { data: insurance }, { data: taxes }, { data: inspections }, { data: profileRow }] =
+      const [{ data: vehicles }, { data: odometer }, { data: maintenanceTypes }, { data: maintenance }, { data: documents }, { data: insurance }, { data: taxes }, { data: inspections }, { data: reminders }, { data: profileRow }] =
         await Promise.all([
           client.from('vehicles').select('*').order('created_at', { ascending: false }),
           client.from('odometer_readings').select('*').order('reading_date', { ascending: false }),
@@ -134,6 +140,7 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
           client.from('insurance_records').select('*').order('expires_at'),
           client.from('tax_records').select('*').order('expires_at'),
           client.from('inspection_records').select('*').order('next_due_date'),
+          client.from('reminders').select('*').order('due_date', { ascending: true, nullsFirst: false }),
           client.from('profiles').select('*').eq('id', authUser.id).maybeSingle()
         ]);
 
@@ -201,7 +208,8 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
         documents: signedDocuments,
         insuranceRecords: (insurance || []).map((row) => ({ id: row.id, vehicleId: row.vehicle_id, userId: row.user_id, company: row.company, policyNumber: row.policy_number || undefined, startsAt: row.starts_at || undefined, expiresAt: row.expires_at, cost: row.cost || undefined, documentId: row.document_id || undefined })),
         taxRecords: (taxes || []).map((row) => ({ id: row.id, vehicleId: row.vehicle_id, userId: row.user_id, year: row.year, amount: row.amount || undefined, paidAt: row.paid_at || undefined, expiresAt: row.expires_at, status: row.status, documentId: row.document_id || undefined })),
-        inspectionRecords: (inspections || []).map((row) => ({ id: row.id, vehicleId: row.vehicle_id, userId: row.user_id, inspectedAt: row.inspected_at, mileage: row.mileage || undefined, outcome: row.outcome || undefined, nextDueDate: row.next_due_date, documentId: row.document_id || undefined }))
+        inspectionRecords: (inspections || []).map((row) => ({ id: row.id, vehicleId: row.vehicle_id, userId: row.user_id, inspectedAt: row.inspected_at, mileage: row.mileage || undefined, outcome: row.outcome || undefined, nextDueDate: row.next_due_date, documentId: row.document_id || undefined })),
+        reminders: (reminders || []).map((row) => ({ id: row.id, vehicleId: row.vehicle_id, userId: row.user_id, title: row.title, category: row.category, dueDate: row.due_date || undefined, dueMileage: row.due_mileage || undefined, notes: row.notes || undefined, completedAt: row.completed_at || undefined, completedMaintenanceRecordId: row.completed_maintenance_record_id || undefined, createdAt: row.created_at, updatedAt: row.updated_at }))
       });
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Errore imprevisto');
@@ -350,7 +358,8 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
         ...current,
         vehicles: current.vehicles.filter((vehicle) => vehicle.id !== id),
         maintenanceRecords: current.maintenanceRecords.filter((item) => item.vehicleId !== id),
-        documents: current.documents.filter((item) => item.vehicleId !== id)
+        documents: current.documents.filter((item) => item.vehicleId !== id),
+        reminders: current.reminders.filter((item) => item.vehicleId !== id)
       }));
       setToast('Veicolo eliminato');
       return;
@@ -377,18 +386,18 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
     await refresh();
   };
 
-  const addMaintenance = async (draft: MaintenanceDraft) => {
+  const createMaintenance = async (draft: MaintenanceDraft) => {
     if (!profile) throw new Error('Utente non autenticato');
     const normalized = normalizeMaintenanceDraft(draft);
     if (!supabase) {
-      updateDemo((current) => ({ ...current, maintenanceRecords: [{ ...normalized, id: crypto.randomUUID(), userId: profile.id, createdAt: todayISO() }, ...current.maintenanceRecords] }));
-      setToast('Intervento registrato');
-      return;
+      const record = { ...normalized, id: crypto.randomUUID(), userId: profile.id, createdAt: todayISO() };
+      updateDemo((current) => ({ ...current, maintenanceRecords: [record, ...current.maintenanceRecords] }));
+      return record;
     }
-    const { error } = await supabase.from('maintenance_records').insert({
+    const { data: record, error } = await supabase.from('maintenance_records').insert({
       vehicle_id: normalized.vehicleId,
       user_id: profile.id,
-      maintenance_type_id: optionalUuid(normalized.maintenanceTypeId),
+      maintenance_type_id: nullable(normalized.maintenanceTypeId),
       type_name: normalized.typeName,
       title: normalized.title,
       performed_at: normalized.performedAt,
@@ -401,9 +410,33 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
       next_due_date: nullable(normalized.nextDueDate),
       next_due_mileage: nullable(normalized.nextDueMileage),
       is_recurring: normalized.isRecurring
-    });
+    }).select('*').single();
     if (error) throw error;
     await refresh();
+    return {
+      id: record.id,
+      vehicleId: record.vehicle_id,
+      userId: record.user_id,
+      maintenanceTypeId: record.maintenance_type_id || undefined,
+      typeName: record.type_name,
+      title: record.title,
+      performedAt: record.performed_at,
+      mileage: record.mileage || undefined,
+      workshop: record.workshop || undefined,
+      cost: record.cost || undefined,
+      notes: record.notes || undefined,
+      intervalMonths: record.interval_months || undefined,
+      intervalKm: record.interval_km || undefined,
+      nextDueDate: record.next_due_date || undefined,
+      nextDueMileage: record.next_due_mileage || undefined,
+      isRecurring: record.is_recurring,
+      createdAt: record.created_at
+    };
+  };
+
+  const addMaintenance = async (draft: MaintenanceDraft) => {
+    await createMaintenance(draft);
+    setToast('Intervento registrato');
   };
 
   const deleteMaintenance = async (id: string) => {
@@ -464,6 +497,69 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
     await refresh();
   };
 
+  const addReminder = async (draft: ReminderDraft) => {
+    if (!profile) throw new Error('Utente non autenticato');
+    if (!draft.dueDate && draft.dueMileage === undefined) throw new Error('Inserisci almeno una data o un chilometraggio');
+    if (!supabase) {
+      updateDemo((current) => ({
+        ...current,
+        reminders: [{ ...draft, id: crypto.randomUUID(), userId: profile.id, createdAt: todayISO(), updatedAt: todayISO() }, ...current.reminders]
+      }));
+      setToast('Promemoria creato');
+      return;
+    }
+    const { error } = await supabase.from('reminders').insert({
+      vehicle_id: draft.vehicleId,
+      user_id: profile.id,
+      title: draft.title,
+      category: draft.category,
+      due_date: nullable(draft.dueDate),
+      due_mileage: nullable(draft.dueMileage),
+      notes: nullable(draft.notes)
+    });
+    if (error) throw error;
+    await refresh();
+    setToast('Promemoria creato');
+  };
+
+  const completeReminder = async (id: string) => {
+    if (!supabase) {
+      updateDemo((current) => ({ ...current, reminders: current.reminders.map((item) => (item.id === id ? { ...item, completedAt: todayISO(), updatedAt: todayISO() } : item)) }));
+      setToast('Promemoria completato');
+      return;
+    }
+    const { error } = await supabase.from('reminders').update({ completed_at: todayISO() }).eq('id', id);
+    if (error) throw error;
+    await refresh();
+  };
+
+  const completeReminderWithMaintenance = async (id: string, draft: MaintenanceDraft) => {
+    const record = await createMaintenance(draft);
+    if (!supabase) {
+      updateDemo((current) => ({
+        ...current,
+        reminders: current.reminders.map((item) => item.id === id ? { ...item, completedAt: todayISO(), completedMaintenanceRecordId: record.id, updatedAt: todayISO() } : item)
+      }));
+      setToast('Promemoria completato e manutenzione registrata');
+      return;
+    }
+    const { error } = await supabase.from('reminders').update({ completed_at: todayISO(), completed_maintenance_record_id: record.id }).eq('id', id);
+    if (error) throw error;
+    await refresh();
+    setToast('Promemoria completato e manutenzione registrata');
+  };
+
+  const deleteReminder = async (id: string) => {
+    if (!supabase) {
+      updateDemo((current) => ({ ...current, reminders: current.reminders.filter((item) => item.id !== id) }));
+      setToast('Promemoria eliminato');
+      return;
+    }
+    const { error } = await supabase.from('reminders').delete().eq('id', id);
+    if (error) throw error;
+    await refresh();
+  };
+
   const value: AppContextValue = {
     mode,
     profile,
@@ -485,7 +581,11 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
     addMaintenance,
     deleteMaintenance,
     addDocument,
-    deleteDocument
+    deleteDocument,
+    addReminder,
+    completeReminder,
+    completeReminderWithMaintenance,
+    deleteReminder
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

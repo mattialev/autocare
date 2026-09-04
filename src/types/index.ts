@@ -142,6 +142,21 @@ export type InspectionRecord = {
   documentId?: string;
 };
 
+export type Reminder = {
+  id: string;
+  vehicleId: string;
+  userId: string;
+  title: string;
+  category: DeadlineKind;
+  dueDate?: string;
+  dueMileage?: number;
+  notes?: string;
+  completedAt?: string;
+  completedMaintenanceRecordId?: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
 export type DeadlineKind = 'manutenzione' | 'documenti' | 'assicurazione' | 'bollo' | 'revisione' | 'evento';
 export type DeadlineStatus = 'ok' | 'info' | 'soon' | 'expired';
 
@@ -172,8 +187,10 @@ export type AppData = {
   insuranceRecords: InsuranceRecord[];
   taxRecords: TaxRecord[];
   inspectionRecords: InspectionRecord[];
+  reminders: Reminder[];
 };
 
 export type VehicleDraft = Omit<Vehicle, 'id' | 'userId' | 'createdAt' | 'updatedAt'>;
 export type MaintenanceDraft = Omit<MaintenanceRecord, 'id' | 'userId' | 'createdAt'>;
 export type DocumentDraft = Omit<VehicleDocument, 'id' | 'userId' | 'createdAt' | 'updatedAt' | 'signedUrl'>;
+export type ReminderDraft = Omit<Reminder, 'id' | 'userId' | 'createdAt' | 'updatedAt' | 'completedAt'>;

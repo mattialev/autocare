@@ -151,5 +151,8 @@ export const demoData: AppData = {
   ],
   inspectionRecords: [
     { id: 'r-1', vehicleId, userId, inspectedAt: '2025-05-18', mileage: 28500, outcome: 'Regolare', nextDueDate: '2027-05-31' }
+  ],
+  reminders: [
+    { id: 'rem-1', vehicleId, userId, title: 'Controllo pressione pneumatici', category: 'evento', dueDate: '2026-09-20', dueMileage: 43000, notes: 'Promemoria demo.', createdAt: '2026-09-04', updatedAt: '2026-09-04' }
   ]
 };

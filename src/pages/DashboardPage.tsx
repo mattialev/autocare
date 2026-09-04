@@ -1,21 +1,29 @@
 import { useMemo, useState } from 'react';
-import { FileCheck2, Gauge, Plus, Wrench } from 'lucide-react';
+import { BellPlus, FileCheck2, Gauge, Plus, Wrench } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { Modal } from '../components/Modal';
 import { MileageForm } from '../components/forms/MileageForm';
 import { MaintenanceForm } from '../components/forms/MaintenanceForm';
+import { ReminderForm } from '../components/forms/ReminderForm';
 import { StatusBadge } from '../components/StatusBadge';
+import { DeadlineDetail } from '../components/DetailViews';
 import { useVehicle } from '../hooks/useVehicle';
-import { buildDeadlines, hasImportantDocument, maintenanceTotal, upcomingDeadlines } from '../utils/deadlines';
+import { buildDeadlines, hasImportantDocument, maintenanceTotal, upcomingDashboardDeadlines } from '../utils/deadlines';
 import { formatCurrency, formatDate, formatKm, relativeDueLabel } from '../utils/format';
 
 export const DashboardPage = () => {
-  const { data, updateMileage, addMaintenance } = useApp();
+  const { data, updateMileage, addMaintenance, addReminder } = useApp();
   const { vehicle } = useVehicle();
   const [mileageOpen, setMileageOpen] = useState(false);
   const [maintenanceOpen, setMaintenanceOpen] = useState(false);
+  const [reminderOpen, setReminderOpen] = useState(false);
+  const [detailId, setDetailId] = useState<string | null>(null);
   const vehicleId = vehicle!.id;
-  const deadlines = useMemo(() => upcomingDeadlines(buildDeadlines(data, vehicleId)), [data, vehicleId]);
+  const deadlines = useMemo(() => upcomingDashboardDeadlines(buildDeadlines(data, vehicleId), vehicle!.currentMileage), [data, vehicleId, vehicle]);
+  const detailDeadline = deadlines.find((item) => item.id === detailId);
+  const detailReminder = detailDeadline ? data.reminders.find((item) => item.id === detailDeadline.sourceId) : undefined;
+  const detailMaintenance = detailDeadline ? data.maintenanceRecords.find((item) => item.id === detailDeadline.sourceId) : undefined;
+  const detailDocument = detailDeadline ? data.documents.find((item) => item.id === detailDeadline.sourceId) : undefined;
   const maintenance = data.maintenanceRecords.filter((item) => item.vehicleId === vehicleId);
   const docs = data.documents.filter((item) => item.vehicleId === vehicleId);
   const readings = data.odometerReadings.filter((item) => item.vehicleId === vehicleId);
@@ -36,6 +44,7 @@ export const DashboardPage = () => {
         </div>
         <div className="hero-actions">
           <button className="button button-ghost" type="button" onClick={() => setMileageOpen(true)}>Aggiorna km</button>
+          <button className="button button-ghost" type="button" onClick={() => setReminderOpen(true)}><BellPlus size={18} /> Imposta scadenza</button>
           <button className="button button-primary" type="button" onClick={() => setMaintenanceOpen(true)}><Plus size={18} /> Nuovo intervento</button>
         </div>
       </section>
@@ -44,10 +53,10 @@ export const DashboardPage = () => {
           <h2>Nei prossimi 60 giorni</h2>
           <div className="deadline-list">
             {deadlines.length ? deadlines.map((item) => (
-              <div className="deadline-row" key={item.id}>
-                <div><strong>{item.title}</strong><span>{formatDate(item.dueDate)} - {relativeDueLabel(item.daysLeft)}</span></div>
+              <button className="deadline-row clickable-deadline" key={item.id} type="button" onClick={() => setDetailId(item.id)}>
+                <div><strong>{item.title}</strong><span>{item.dueDate ? `${formatDate(item.dueDate)} - ${relativeDueLabel(item.daysLeft)}` : `al raggiungimento di ${formatKm(item.dueMileage)}`}</span></div>
                 <StatusBadge status={item.status} />
-              </div>
+              </button>
             )) : <p className="muted">Nessuna scadenza nei prossimi 60 giorni.</p>}
           </div>
         </article>
@@ -71,7 +80,9 @@ export const DashboardPage = () => {
         </article>
       </section>
       {mileageOpen && <Modal title="Aggiorna chilometraggio" onClose={() => setMileageOpen(false)}><MileageForm currentMileage={vehicle!.currentMileage} onCancel={() => setMileageOpen(false)} onSubmit={async (km, date) => { await updateMileage(vehicleId, km, date); setMileageOpen(false); }} /></Modal>}
+      {reminderOpen && <Modal title="Imposta scadenza" onClose={() => setReminderOpen(false)}><ReminderForm vehicleId={vehicleId} onCancel={() => setReminderOpen(false)} onSubmit={async (draft) => { await addReminder(draft); setReminderOpen(false); }} /></Modal>}
       {maintenanceOpen && <Modal title="Nuovo intervento" onClose={() => setMaintenanceOpen(false)}><MaintenanceForm vehicleId={vehicleId} onCancel={() => setMaintenanceOpen(false)} onSubmit={async (draft) => { await addMaintenance(draft); setMaintenanceOpen(false); }} /></Modal>}
+      {detailDeadline && <Modal title="Dettaglio scadenza" onClose={() => setDetailId(null)}><DeadlineDetail deadline={detailDeadline} reminder={detailReminder} maintenance={detailMaintenance} document={detailDocument} /></Modal>}
     </>
   );
 };
