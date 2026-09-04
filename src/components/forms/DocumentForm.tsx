@@ -40,7 +40,8 @@ export const DocumentForm = ({ vehicleId, maintenanceRecords, onSubmit, onCancel
       try {
         await onSubmit(values, file);
       } catch (error) {
-        const message = error instanceof Error ? error.message : 'Caricamento non riuscito';
+        const supabaseError = error as { message?: string; details?: string; hint?: string };
+        const message = [supabaseError.message, supabaseError.details, supabaseError.hint].filter(Boolean).join(' - ') || 'Caricamento non riuscito';
         setSubmitError(message.includes('maximum allowed size') ? 'Il file supera il limite configurato su Supabase.' : message);
       }
     })}>

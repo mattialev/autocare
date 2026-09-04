@@ -45,6 +45,8 @@ const saveDemoData = (data: AppData) => localStorage.setItem(storageKey, JSON.st
 
 const getAuthRedirectUrl = () => new URL(import.meta.env.BASE_URL, window.location.origin).toString();
 
+const nullable = <T,>(value: T | '' | undefined | null) => (value === '' || value === undefined ? null : value);
+
 const fileToDataUrl = (file: File) =>
   new Promise<string>((resolve, reject) => {
     const reader = new FileReader();
@@ -273,22 +275,22 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
       user_id: profile.id,
       make: draft.make,
       model: draft.model,
-      trim: draft.trim,
-      engine: draft.engine,
+      trim: nullable(draft.trim),
+      engine: nullable(draft.engine),
       fuel: draft.fuel,
-      power: draft.power,
-      year: draft.year,
-      plate: draft.plate,
-      vin: draft.vin,
-      first_registration_date: draft.firstRegistrationDate,
-      purchase_date: draft.purchaseDate,
-      purchase_mileage: draft.purchaseMileage,
+      power: nullable(draft.power),
+      year: nullable(draft.year),
+      plate: nullable(draft.plate),
+      vin: nullable(draft.vin),
+      first_registration_date: nullable(draft.firstRegistrationDate),
+      purchase_date: nullable(draft.purchaseDate),
+      purchase_mileage: nullable(draft.purchaseMileage),
       current_mileage: draft.currentMileage,
-      mileage_updated_at: draft.mileageUpdatedAt,
-      purchase_price: draft.purchasePrice,
-      seller: draft.seller,
-      notes: draft.notes,
-      image_url: draft.imageUrl
+      mileage_updated_at: nullable(draft.mileageUpdatedAt),
+      purchase_price: nullable(draft.purchasePrice),
+      seller: nullable(draft.seller),
+      notes: nullable(draft.notes),
+      image_url: nullable(draft.imageUrl)
     };
     const { data: inserted, error } = await supabase.from('vehicles').insert(row).select('*').single();
     if (error) throw error;
@@ -319,23 +321,23 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
     const { error } = await supabase.from('vehicles').update({
       make: patch.make,
       model: patch.model,
-      trim: patch.trim,
-      engine: patch.engine,
+      trim: nullable(patch.trim),
+      engine: nullable(patch.engine),
       fuel: patch.fuel,
-      power: patch.power,
-      year: patch.year,
-      plate: patch.plate,
-      vin: patch.vin,
-      first_registration_date: patch.firstRegistrationDate,
-      purchase_date: patch.purchaseDate,
-      purchase_mileage: patch.purchaseMileage,
+      power: nullable(patch.power),
+      year: nullable(patch.year),
+      plate: nullable(patch.plate),
+      vin: nullable(patch.vin),
+      first_registration_date: nullable(patch.firstRegistrationDate),
+      purchase_date: nullable(patch.purchaseDate),
+      purchase_mileage: nullable(patch.purchaseMileage),
       current_mileage: patch.currentMileage,
-      mileage_updated_at: patch.mileageUpdatedAt,
-      purchase_price: patch.purchasePrice,
-      seller: patch.seller,
-      notes: patch.notes,
-      image_path: imagePath,
-      image_url: patch.imageUrl
+      mileage_updated_at: nullable(patch.mileageUpdatedAt),
+      purchase_price: nullable(patch.purchasePrice),
+      seller: nullable(patch.seller),
+      notes: nullable(patch.notes),
+      image_path: nullable(imagePath),
+      image_url: nullable(patch.imageUrl)
     }).eq('id', id);
     if (error) throw error;
     await refresh();
@@ -385,18 +387,18 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
     const { error } = await supabase.from('maintenance_records').insert({
       vehicle_id: normalized.vehicleId,
       user_id: profile.id,
-      maintenance_type_id: normalized.maintenanceTypeId,
+      maintenance_type_id: nullable(normalized.maintenanceTypeId),
       type_name: normalized.typeName,
       title: normalized.title,
       performed_at: normalized.performedAt,
-      mileage: normalized.mileage,
-      workshop: normalized.workshop,
-      cost: normalized.cost,
-      notes: normalized.notes,
-      interval_months: normalized.intervalMonths,
-      interval_km: normalized.intervalKm,
-      next_due_date: normalized.nextDueDate,
-      next_due_mileage: normalized.nextDueMileage,
+      mileage: nullable(normalized.mileage),
+      workshop: nullable(normalized.workshop),
+      cost: nullable(normalized.cost),
+      notes: nullable(normalized.notes),
+      interval_months: nullable(normalized.intervalMonths),
+      interval_km: nullable(normalized.intervalKm),
+      next_due_date: nullable(normalized.nextDueDate),
+      next_due_mileage: nullable(normalized.nextDueMileage),
       is_recurring: normalized.isRecurring
     });
     if (error) throw error;
@@ -432,16 +434,16 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
     const { error } = await supabase.from('documents').insert({
       vehicle_id: normalized.vehicleId,
       user_id: profile.id,
-      maintenance_record_id: normalized.maintenanceRecordId,
+      maintenance_record_id: nullable(normalized.maintenanceRecordId),
       name: normalized.name,
       category: normalized.category,
-      description: normalized.description,
-      document_date: normalized.documentDate,
-      expires_at: normalized.expiresAt,
-      file_path: filePath,
-      file_name: file?.name || normalized.fileName,
-      file_type: file?.type || normalized.fileType,
-      file_size: file?.size || normalized.fileSize
+      description: nullable(normalized.description),
+      document_date: nullable(normalized.documentDate),
+      expires_at: nullable(normalized.expiresAt),
+      file_path: nullable(filePath),
+      file_name: nullable(file?.name || normalized.fileName),
+      file_type: nullable(file?.type || normalized.fileType),
+      file_size: nullable(file?.size || normalized.fileSize)
     });
     if (error) throw error;
     await refresh();
