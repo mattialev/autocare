@@ -3,6 +3,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import type { DocumentCategory, DocumentDraft, MaintenanceRecord } from '../../types';
+import { formatFileSize } from '../../utils/format';
 
 const categories: DocumentCategory[] = ['Anagrafica', 'Acquisto', 'Libretto', 'Assicurazione', 'Bollo', 'Revisione', 'Manutenzione', 'Garanzia', 'Pneumatici', 'Altro'];
 const maxUploadSize = 50 * 1024 * 1024;
@@ -13,7 +14,7 @@ const schema = z.object({
   name: z.string().min(1, 'Inserisci il nome del documento'),
   category: z.enum(categories as [DocumentCategory, ...DocumentCategory[]]),
   description: z.string().optional(),
-  documentDate: z.string().optional(),
+  documentDate: z.string().min(1, 'Inserisci la data del documento'),
   expiresAt: z.string().optional(),
   filePath: z.string().optional(),
   fileName: z.string().optional(),
@@ -33,6 +34,10 @@ export const DocumentForm = ({ vehicleId, maintenanceRecords, onSubmit, onCancel
   return (
     <form className="form" onSubmit={handleSubmit(async (values) => {
       setSubmitError(null);
+      if (!file) {
+        setFileError('Seleziona un file PDF, JPG o PNG.');
+        return;
+      }
       if (file && file.size > maxUploadSize) {
         setFileError('Il file supera il limite di 50 MB.');
         return;
@@ -46,12 +51,12 @@ export const DocumentForm = ({ vehicleId, maintenanceRecords, onSubmit, onCancel
       }
     })}>
       <div className="form-grid">
-        <label>Nome<input {...register('name')} />{errors.name && <span>{errors.name.message}</span>}</label>
-        <label>Categoria<select {...register('category')}>{categories.map((category) => <option key={category} value={category}>{category}</option>)}</select></label>
-        <label>Data documento<input type="date" {...register('documentDate')} /></label>
+        <label>Nome *<input {...register('name')} />{errors.name && <span>{errors.name.message}</span>}</label>
+        <label>Categoria *<select {...register('category')}>{categories.map((category) => <option key={category} value={category}>{category}</option>)}</select></label>
+        <label>Data *<input type="date" {...register('documentDate')} />{errors.documentDate && <span>{errors.documentDate.message}</span>}</label>
         <label>Scadenza<input type="date" {...register('expiresAt')} /></label>
         <label>Manutenzione collegata<select {...register('maintenanceRecordId')}><option value="">Nessuna</option>{maintenanceRecords.map((record) => <option key={record.id} value={record.id}>{record.title}</option>)}</select></label>
-        <label>File PDF/JPG/PNG<input type="file" accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png" onChange={(event) => {
+        <label>File *<input type="file" accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png" onChange={(event) => {
           const selected = event.target.files?.[0];
           setSubmitError(null);
           if (selected && selected.size > maxUploadSize) {
@@ -62,7 +67,7 @@ export const DocumentForm = ({ vehicleId, maintenanceRecords, onSubmit, onCancel
           }
           setFileError(null);
           setFile(selected);
-        }} />{fileError && <span>{fileError}</span>}</label>
+        }} />{file && <small className="field-hint">{file.name} - {formatFileSize(file.size)}</small>}{fileError && <span>{fileError}</span>}</label>
       </div>
       <label>Note<textarea rows={4} {...register('description')} /></label>
       {submitError && <p className="form-error">{submitError}</p>}

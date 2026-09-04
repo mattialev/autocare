@@ -46,6 +46,7 @@ const saveDemoData = (data: AppData) => localStorage.setItem(storageKey, JSON.st
 const getAuthRedirectUrl = () => new URL(import.meta.env.BASE_URL, window.location.origin).toString();
 
 const nullable = <T,>(value: T | '' | undefined | null) => (value === '' || value === undefined ? null : value);
+const optionalUuid = (value?: string | null) => (value && value.trim().length > 0 ? value : null);
 
 const fileToDataUrl = (file: File) =>
   new Promise<string>((resolve, reject) => {
@@ -387,7 +388,7 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
     const { error } = await supabase.from('maintenance_records').insert({
       vehicle_id: normalized.vehicleId,
       user_id: profile.id,
-      maintenance_type_id: nullable(normalized.maintenanceTypeId),
+      maintenance_type_id: optionalUuid(normalized.maintenanceTypeId),
       type_name: normalized.typeName,
       title: normalized.title,
       performed_at: normalized.performedAt,
@@ -431,10 +432,10 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
       const { error } = await supabase.storage.from(DOCUMENTS_BUCKET).upload(filePath, file, { upsert: false });
       if (error) throw error;
     }
-    const { error } = await supabase.from('documents').insert({
+    const documentRow = {
       vehicle_id: normalized.vehicleId,
       user_id: profile.id,
-      maintenance_record_id: nullable(normalized.maintenanceRecordId),
+      maintenance_record_id: optionalUuid(normalized.maintenanceRecordId),
       name: normalized.name,
       category: normalized.category,
       description: nullable(normalized.description),
@@ -444,7 +445,8 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
       file_name: nullable(file?.name || normalized.fileName),
       file_type: nullable(file?.type || normalized.fileType),
       file_size: nullable(file?.size || normalized.fileSize)
-    });
+    };
+    const { error } = await supabase.from('documents').insert(documentRow);
     if (error) throw error;
     await refresh();
   };

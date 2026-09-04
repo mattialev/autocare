@@ -144,6 +144,7 @@ tr:last-child td { border-bottom: 0; }
 label { color: #344054; font-weight: 800; font-size: .88rem; }
 label input, label select, label textarea { margin-top: .35rem; width: 100%; border: 1px solid var(--border); border-radius: 10px; padding: .7rem .75rem; background: white; color: var(--text); outline-color: var(--primary); }
 label span, .form-error { color: var(--red); font-size: .82rem; margin: .25rem 0 0; }
+.field-hint { display: block; color: var(--muted); font-weight: 700; margin-top: .3rem; }
 .checkbox-row { display: flex; align-items: center; gap: .55rem; align-self: end; }
 .checkbox-row input { width: auto; margin: 0; }
 .empty-state { padding: 2rem; text-align: center; color: var(--muted); display: grid; gap: 1rem; place-items: center; }
