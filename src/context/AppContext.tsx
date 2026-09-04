@@ -43,6 +43,8 @@ const loadDemoData = () => {
 
 const saveDemoData = (data: AppData) => localStorage.setItem(storageKey, JSON.stringify(data));
 
+const getAuthRedirectUrl = () => new URL(import.meta.env.BASE_URL, window.location.origin).toString();
+
 const fileToDataUrl = (file: File) =>
   new Promise<string>((resolve, reject) => {
     const reader = new FileReader();
@@ -236,7 +238,14 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
       await refresh();
       return;
     }
-    const { error } = await supabase.auth.signUp({ email, password, options: { data: { full_name: fullName } } });
+    const { error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: { full_name: fullName },
+        emailRedirectTo: getAuthRedirectUrl()
+      }
+    });
     if (error) throw error;
     setToast('Registrazione completata. Controlla la tua email se la conferma e attiva.');
   };

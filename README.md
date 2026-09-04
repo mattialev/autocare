@@ -76,3 +76,15 @@ Se il repository si chiama `autocare`, l'URL sara simile a:
 ```text
 https://TUO_USERNAME.github.io/autocare/
 ```
+
+In Supabase, usa lo stesso URL anche in `Authentication -> URL Configuration`:
+
+```text
+Site URL:
+https://TUO_USERNAME.github.io/autocare/
+
+Redirect URLs:
+https://TUO_USERNAME.github.io/autocare/**
+http://localhost:5173/**
+http://127.0.0.1:5173/**
+```
