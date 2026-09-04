@@ -70,3 +70,9 @@ Configura i secrets del repository:
 - `VITE_SUPABASE_ANON_KEY`
 
 Poi abilita GitHub Pages con sorgente "GitHub Actions". Il workflow in `.github/workflows/deploy.yml` compila e pubblica `dist`.
+
+Se il repository si chiama `autocare`, l'URL sara simile a:
+
+```text
+https://TUO_USERNAME.github.io/autocare/
+```
